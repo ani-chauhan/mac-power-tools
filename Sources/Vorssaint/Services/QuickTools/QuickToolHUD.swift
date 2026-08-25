@@ -11,6 +11,7 @@ enum QuickToolHUD {
     private static var panel: NSPanel?
     private static var scrollingPanel: ScrollingCapturePanel?
     private static var scrollingModel: ScrollingCaptureHUDModel?
+    private static var regionGuidePanel: NSPanel?
     private static var dismissWork: DispatchWorkItem?
     /// Bumped by every show(). A dismiss whose fade-out was overtaken by a
     /// newer show() must not order the panel out from its completion handler.
@@ -135,6 +136,62 @@ enum QuickToolHUD {
         scrollingModel = nil
     }
 
+    /// The border kept on screen for the whole scrolling capture, so the exact
+    /// area still being read is never in question mid-scroll. Purely visual,
+    /// like the recorder's own region guide: clicks and the scroll wheel pass
+    /// straight through to the page underneath.
+    static var currentRegionGuideWindowNumber: Int? {
+        guard let regionGuidePanel, regionGuidePanel.isVisible else { return nil }
+        return regionGuidePanel.windowNumber
+    }
+
+    /// Skips a window-picked region: that guide would track the display, not
+    /// the window, and drift the moment the window moves or resizes.
+    static func showScrollingRegionGuide(for region: RecorderSupport.Region) {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { showScrollingRegionGuide(for: region) }
+            return
+        }
+        guard regionGuidePanel == nil, region.windowID == nil,
+              let screen = NSScreen.screens.first(where: { $0.displayID == region.displayID })
+        else { return }
+
+        let selection = CGRect(x: region.anchorRect.minX - screen.frame.minX,
+                               y: region.anchorRect.minY - screen.frame.minY,
+                               width: region.anchorRect.width,
+                               height: region.anchorRect.height)
+            .intersection(CGRect(origin: .zero, size: screen.frame.size))
+        guard selection.width >= 1, selection.height >= 1 else { return }
+
+        let guide = ScrollingRegionGuideView(frame: CGRect(origin: .zero, size: screen.frame.size),
+                                             selection: selection)
+        let panel = NSPanel(contentRect: screen.frame,
+                            styleMask: [.borderless, .nonactivatingPanel],
+                            backing: .buffered,
+                            defer: false)
+        panel.contentView = guide
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = false
+        panel.level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue - 1)
+        panel.isReleasedWhenClosed = false
+        panel.hidesOnDeactivate = false
+        panel.ignoresMouseEvents = true
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary,
+                                    .stationary, .ignoresCycle]
+        panel.orderFrontRegardless()
+        regionGuidePanel = panel
+    }
+
+    static func dismissScrollingRegionGuide() {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { dismissScrollingRegionGuide() }
+            return
+        }
+        regionGuidePanel?.orderOut(nil)
+        regionGuidePanel = nil
+    }
+
     private static func present(_ content: AnyView,
                                 dismissAfter: Double,
                                 windowShadow: Bool = true) {
@@ -245,6 +302,32 @@ private struct QuickToolCountdownView: View {
 /// underlying window continues receiving pointer and scrolling events.
 private final class ScrollingCapturePanel: NSPanel {
     override var canBecomeKey: Bool { true }
+}
+
+private final class ScrollingRegionGuideView: NSView {
+    private let selection: CGRect
+
+    init(frame frameRect: NSRect, selection: CGRect) {
+        self.selection = selection
+        super.init(frame: frameRect)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { nil }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard let context = NSGraphicsContext.current?.cgContext else { return }
+        context.beginPath()
+        context.addRect(bounds)
+        context.addRect(selection)
+        context.setFillColor(CGColor(gray: 0, alpha: 0.3))
+        context.fillPath(using: .evenOdd)
+
+        context.addRect(selection.insetBy(dx: 1, dy: 1))
+        context.setStrokeColor(CGColor(srgbRed: 0.18, green: 0.55, blue: 1, alpha: 0.95))
+        context.setLineWidth(2)
+        context.strokePath()
+    }
 }
 
 private final class ScrollingCaptureHUDModel: ObservableObject {

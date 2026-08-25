@@ -104,6 +104,16 @@ final class AppSwitcher: ObservableObject {
     private var routePendingSessionStart: SwitcherPendingSessionStart?
     private var sessionStartGeneration: UInt64 = 0
 
+    /// Quick launch: hold a modifier, tap a letter, activate the matching
+    /// running app. Lives on the same tap and lock as the panel switcher so a
+    /// second keyDown tap is never installed — the window server pays for
+    /// every tap on every keystroke.
+    private var routeQuickLaunchEnabled = false
+    private var routeQuickLaunchModifier = SwitcherQuickLaunchSupport.defaultModifier
+    private var routeQuickLaunchRoster: [Character: [SwitcherQuickLaunchSupport.Target]] = [:]
+    private var routeQuickLaunchHold = SwitcherQuickLaunchSupport.Hold.idle
+    private var quickLaunchWorkspaceObservers: [NSObjectProtocol] = []
+
     /// The panel appears only after this delay, like the system switcher: a
     /// quick ⌘Tab flick switches with no UI at all, which is what makes rapid
     /// toggling feel instant instead of flashing a window.
@@ -163,11 +173,30 @@ final class AppSwitcher: ObservableObject {
         let enabled = AppFeature.switcher.isAvailable
             && UserDefaults.standard.bool(forKey: DefaultsKey.switcherEnabled)
         let canStartSession = enabled && Permissions.shared.accessibility
-        routeLock.withLock { routeCanStartSession = canStartSession }
-        if canStartSession {
+        let quickLaunchArmed = AppFeature.switcher.isAvailable
+            && UserDefaults.standard.bool(forKey: DefaultsKey.switcherQuickLaunchEnabled)
+            && Permissions.shared.accessibility
+        let quickLaunchModifier = SwitcherQuickLaunchSupport.modifier(
+            from: UserDefaults.standard.string(forKey: DefaultsKey.switcherQuickLaunchModifier))
+        routeLock.withLock {
+            routeCanStartSession = canStartSession
+            routeQuickLaunchEnabled = quickLaunchArmed
+            routeQuickLaunchModifier = quickLaunchModifier
+            if !quickLaunchArmed {
+                routeQuickLaunchHold = .idle
+                routeQuickLaunchRoster = [:]
+            }
+        }
+        if canStartSession || quickLaunchArmed {
             startObservingKeyboardLayout()
             startObservingWake()
             installTap()
+        } else {
+            stopObservingKeyboardLayout()
+            stopObservingWake()
+            removeTap()
+        }
+        if canStartSession {
             // Build the panel and its SwiftUI tree now: the first hosting-view
             // render costs hundreds of milliseconds, far too slow to pay on
             // the first ⌘Tab.
@@ -179,10 +208,13 @@ final class AppSwitcher: ObservableObject {
                 WindowPreviewProvider.shared.startWarming()
             }
         } else {
-            stopObservingKeyboardLayout()
-            stopObservingWake()
-            removeTap()
             WindowPreviewProvider.shared.stopWarming()
+        }
+        if quickLaunchArmed {
+            startObservingRunningApps()
+            rebuildQuickLaunchRoster()
+        } else {
+            stopObservingRunningApps()
         }
     }
 
@@ -191,7 +223,12 @@ final class AppSwitcher: ObservableObject {
     /// leave a live tap behind.
     func suspend() {
         stopObservingWake()
-        routeLock.withLock { routeCanStartSession = false }
+        stopObservingRunningApps()
+        routeLock.withLock {
+            routeCanStartSession = false
+            routeQuickLaunchEnabled = false
+            routeQuickLaunchHold = .idle
+        }
         removeTap()
     }
 
@@ -206,6 +243,7 @@ final class AppSwitcher: ObservableObject {
             routeCapturing = capturing
             if capturing {
                 routePendingSessionStart = nil
+                routeQuickLaunchHold = .idle
             }
         }
     }
@@ -259,8 +297,10 @@ final class AppSwitcher: ObservableObject {
 
     private func recoverTapIfNeeded() {
         guard AppFeature.switcher.isAvailable,
-              UserDefaults.standard.bool(forKey: DefaultsKey.switcherEnabled),
-              Permissions.shared.accessibility else { return }
+              Permissions.shared.accessibility,
+              UserDefaults.standard.bool(forKey: DefaultsKey.switcherEnabled)
+                  || UserDefaults.standard.bool(forKey: DefaultsKey.switcherQuickLaunchEnabled)
+        else { return }
         let needsRecovery = lifecycleLock.withLock {
             guard !shouldStopTapThread else { return false }
             guard let tap else { return true }
@@ -295,7 +335,10 @@ final class AppSwitcher: ObservableObject {
 
     private func removeTap() {
         if sessionActive { cancelSession() }
-        routeLock.withLock { routePendingSessionStart = nil }
+        routeLock.withLock {
+            routePendingSessionStart = nil
+            routeQuickLaunchHold = .idle
+        }
         let snapshot = lifecycleLock.withLock {
             () -> (runLoop: CFRunLoop?, tap: CFMachPort?, threadExists: Bool) in
             shouldStopTapThread = true
@@ -404,16 +447,27 @@ final class AppSwitcher: ObservableObject {
             return Unmanaged.passUnretained(event)
         }
 
-        let (active, shortcut, windowShortcut, capturing, canStartSession, hasPendingStart) = routeLock.withLock {
+        let (active, shortcut, windowShortcut, capturing, canStartSession, hasPendingStart,
+             quickLaunchEnabled, quickLaunchModifier) = routeLock.withLock {
             (routeSessionActive, routeShortcut, routeWindowShortcut, routeCapturing,
-             routeCanStartSession, routePendingSessionStart != nil)
+             routeCanStartSession, routePendingSessionStart != nil,
+             routeQuickLaunchEnabled, routeQuickLaunchModifier)
         }
         // A shortcut field in Settings has the keyboard: hand every key
         // straight through so the user can record this feature's own
         // combination instead of opening the switcher with it.
         if capturing { return Unmanaged.passUnretained(event) }
+        // Quick launch's cycle resets the moment its modifier lets go, whether
+        // or not a panel session is open — checked unconditionally so a hold
+        // that outlives a session change still clears correctly, and never
+        // swallowed: eating a modifier-only flagsChanged would break every
+        // other app's use of that same physical key.
+        if type == .flagsChanged, quickLaunchEnabled,
+           !SwitcherQuickLaunchSupport.isHeld(quickLaunchModifier, flags: event.flags.rawValue) {
+            routeLock.withLock { routeQuickLaunchHold = .idle }
+        }
         if !active {
-            guard canStartSession else { return Unmanaged.passUnretained(event) }
+            guard canStartSession || quickLaunchEnabled else { return Unmanaged.passUnretained(event) }
             if type == .flagsChanged {
                 let stillInactive = routeLock.withLock { () -> Bool in
                     guard !routeSessionActive else { return false }
@@ -447,13 +501,47 @@ final class AppSwitcher: ObservableObject {
                 return verdict
             }
             guard type == .keyDown else { return Unmanaged.passUnretained(event) }
-            let matchesApps = shortcut.matches(event: event, allowingExtraShift: true)
-            let matchesWindows = !matchesApps
+            // Gated on canStartSession, not just !active: with the panel
+            // switcher off and only quick launch armed, the panel's own
+            // shortcut must never claim a session (issue would otherwise let
+            // a quick-launch-only setup silently re-enable ⌘Tab).
+            let matchesApps = canStartSession && shortcut.matches(event: event, allowingExtraShift: true)
+            let matchesWindows = canStartSession && !matchesApps
                 && (windowShortcut.matches(event: event, allowingExtraShift: true)
                     || windowShortcut.matchesByCharacter(event: event))
             let matchesShortcut = matchesApps || matchesWindows
             guard matchesShortcut || hasPendingStart else {
-                return Unmanaged.passUnretained(event)
+                guard quickLaunchEnabled,
+                      SwitcherQuickLaunchSupport.isHeld(quickLaunchModifier, flags: event.flags.rawValue)
+                else { return Unmanaged.passUnretained(event) }
+                // The configured modifier is exclusively held: it is now fully
+                // reserved for quick launch, matched letter or not, so ⌘C
+                // reaching a "C" app can never also copy in the app being
+                // left behind. Only a genuinely unrelated key (no letter, no
+                // US-layout fallback) or a race with a panel session
+                // starting passes through.
+                guard let letter = SwitcherQuickLaunchSupport.letter(
+                    typedCharacter: printableSearchText(from: event),
+                    keyCode: event.getIntegerValueField(.keyboardEventKeycode))
+                else { return nil }
+                let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
+                let decision: SwitcherQuickLaunchSupport.Decision? = routeLock.withLock {
+                    guard !routeSessionActive, routePendingSessionStart == nil else { return nil }
+                    return SwitcherQuickLaunchSupport.decide(letter: letter,
+                                                             isRepeat: isRepeat,
+                                                             roster: routeQuickLaunchRoster,
+                                                             hold: &routeQuickLaunchHold)
+                }
+                guard let decision else { return Unmanaged.passUnretained(event) }
+                switch decision {
+                case .ignore, .swallow:
+                    return nil
+                case .activate(let pid, let name):
+                    DispatchQueue.main.async { [weak self] in
+                        self?.performQuickLaunch(letter: letter, pid: pid, name: name)
+                    }
+                    return nil
+                }
             }
             let pendingKeyDecision = routeLock.withLock { () -> SwitcherPendingKeyDecision in
                 let decision = SwitcherSupport.pendingKeyDecision(
@@ -701,6 +789,96 @@ final class AppSwitcher: ObservableObject {
             // Swallow stray keys so they never leak into the focused app.
         }
         return nil
+    }
+
+    // MARK: - Quick launch
+
+    /// Kept fresh from cheap `NSWorkspace` notifications rather than polled,
+    /// so the tap thread's decision (`SwitcherQuickLaunchSupport.decide`)
+    /// never has to touch `NSWorkspace` or Accessibility itself.
+    private func startObservingRunningApps() {
+        guard quickLaunchWorkspaceObservers.isEmpty else { return }
+        let center = NSWorkspace.shared.notificationCenter
+        let names: [Notification.Name] = [
+            NSWorkspace.didLaunchApplicationNotification,
+            NSWorkspace.didTerminateApplicationNotification,
+            NSWorkspace.didActivateApplicationNotification,
+        ]
+        quickLaunchWorkspaceObservers = names.map { name in
+            center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                self?.rebuildQuickLaunchRoster()
+            }
+        }
+    }
+
+    private func stopObservingRunningApps() {
+        let center = NSWorkspace.shared.notificationCenter
+        quickLaunchWorkspaceObservers.forEach { center.removeObserver($0) }
+        quickLaunchWorkspaceObservers.removeAll()
+    }
+
+    /// Recomputes which letters currently resolve to a running app. Cheap by
+    /// design (`NSWorkspace.runningApplications`, no `WindowEnumerator`/AX) so
+    /// it can run on every launch/quit/activate notification. Does not touch
+    /// an in-progress hold: a hold's candidate list is frozen at the letter's
+    /// first press, so a roster refresh mid-cycle only affects the *next*
+    /// letter pressed.
+    private func rebuildQuickLaunchRoster() {
+        let ownPID = ProcessInfo.processInfo.processIdentifier
+        let apps: [SwitcherQuickLaunchSupport.RunningApp] = NSWorkspace.shared.runningApplications
+            .compactMap { app in
+                guard app.activationPolicy == .regular,
+                      !app.isTerminated,
+                      app.processIdentifier != ownPID,
+                      let name = app.localizedName, !name.isEmpty
+                else { return nil }
+                return SwitcherQuickLaunchSupport.RunningApp(
+                    pid: app.processIdentifier,
+                    bundleID: app.bundleIdentifier,
+                    name: name,
+                    mruRank: WindowUseTracker.shared.rank(of: app.processIdentifier))
+            }
+        let assignments = SwitcherQuickLaunchSupport.assignments(
+            storedValue: UserDefaults.standard.dictionary(forKey: DefaultsKey.switcherQuickLaunchPriorities))
+        let roster = SwitcherQuickLaunchSupport.roster(apps: apps, assignments: assignments)
+        routeLock.withLock { routeQuickLaunchRoster = roster }
+    }
+
+    /// Main-thread side of a quick-launch activation. Falls back through the
+    /// frozen hold if the chosen pid quit between the tap and here — an app
+    /// closing mid-hold should skip it, not do nothing. On success, promotes
+    /// the activated app to the front of the letter's priority list: quick
+    /// launch is self-reinforcing, so the app you actually switch to becomes
+    /// that letter's top match from then on.
+    private func performQuickLaunch(letter: Character, pid: pid_t, name: String) {
+        guard pid != ProcessInfo.processInfo.processIdentifier else { return }
+        if let app = NSRunningApplication(processIdentifier: pid), !app.isTerminated {
+            WindowActivator.activate(pid: pid, windowID: nil, appName: name, retry: false)
+            if let bundleID = app.bundleIdentifier {
+                promoteQuickLaunchPriority(bundleID: bundleID, letter: letter)
+            }
+            return
+        }
+        let next: SwitcherQuickLaunchSupport.Target? = routeLock.withLock {
+            routeQuickLaunchHold.candidates.removeAll { $0.pid == pid }
+            guard !routeQuickLaunchHold.candidates.isEmpty else { return nil }
+            routeQuickLaunchHold.index %= routeQuickLaunchHold.candidates.count
+            return routeQuickLaunchHold.candidates[routeQuickLaunchHold.index]
+        }
+        guard let next else { return }
+        performQuickLaunch(letter: letter, pid: next.pid, name: next.name)
+    }
+
+    /// Re-reads the current priority list from disk (never trusts an
+    /// in-memory copy that might be stale against a concurrent Settings edit),
+    /// moves `bundleID` to the front of `letter`'s list, and persists it.
+    private func promoteQuickLaunchPriority(bundleID: String, letter: Character) {
+        let current = SwitcherQuickLaunchSupport.assignments(
+            storedValue: UserDefaults.standard.dictionary(forKey: DefaultsKey.switcherQuickLaunchPriorities))
+        let updated = SwitcherQuickLaunchSupport.promoting(bundleID, to: letter, in: current)
+        UserDefaults.standard.set(SwitcherQuickLaunchSupport.storedValue(updated),
+                                  forKey: DefaultsKey.switcherQuickLaunchPriorities)
+        rebuildQuickLaunchRoster()
     }
 
     // MARK: - Session lifecycle

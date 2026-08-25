@@ -190,10 +190,10 @@ enum ScreenshotSupport {
     /// A failed scroll target must never keep the capture alive forever or
     /// exhaust memory. Reaching a guard keeps the valid portion and explains
     /// why the capture stopped.
-    static let scrollingCaptureMaximumDuration: TimeInterval = 120
-    static let scrollingCaptureMaximumFrames = 512
-    static let scrollingCaptureMaximumRetainedPixels = 60_000_000
-    static let scrollingCaptureMaximumPixels = 60_000_000
+    static let scrollingCaptureMaximumDuration: TimeInterval = 1200
+    static let scrollingCaptureMaximumFrames = 5120
+    static let scrollingCaptureMaximumRetainedPixels = 600_000_000
+    static let scrollingCaptureMaximumPixels = 600_000_000
 
     struct ScrollingSample: Equatable {
         let width: Int

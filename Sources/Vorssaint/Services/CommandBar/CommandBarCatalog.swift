@@ -380,6 +380,15 @@ enum CommandBarCatalog {
                 shortcut: roleShortcut(.scratchpad),
                 run: { _ in afterBeat { ScratchpadService.shared.show() } }))
         }
+        if AppFeature.pixelRuler.isAvailable {
+            entries.append(CommandBarEntry(
+                id: "action.pixelRuler",
+                title: FeatureStrings.pixelRuler(language).pageTitle,
+                subtitle: area(.pixelRuler, under: FeatureStrings.pixelRuler(language).pageTitle),
+                icon: .symbol("ruler"),
+                shortcut: roleShortcut(.pixelRuler),
+                run: { _ in afterBeat { PixelRulerService.shared.toggle() } }))
+        }
         if AppFeature.cameraPreview.isAvailable {
             entries.append(CommandBarEntry(
                 id: "action.cameraPreview",

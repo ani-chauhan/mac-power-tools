@@ -119,6 +119,7 @@ struct SettingsView: View {
         case .features: FeatureHubSettings()
         case .textSnippets: TextSnippetsSettings()
         case .radialMenu: RadialMenuSettings()
+        case .pixelRuler: PixelRulerSettings()
         case .commandBar: CommandBarSettings()
         case .energy: EnergySettings()
         case .monitor: MonitorSettings()
@@ -872,6 +873,9 @@ struct SwitcherSettings: View {
     @AppStorage(DefaultsKey.switcherCurrentSpaceOnly) private var switcherCurrentSpaceOnly = false
     @AppStorage(DefaultsKey.switcherSearchPinEnabled) private var switcherSearchPinEnabled = false
     @AppStorage(DefaultsKey.switcherShowShortcutHints) private var switcherShowShortcutHints = true
+    @AppStorage(DefaultsKey.switcherQuickLaunchEnabled) private var switcherQuickLaunchEnabled = false
+    @AppStorage(DefaultsKey.switcherQuickLaunchModifier) private var switcherQuickLaunchModifierStorage =
+        SwitcherQuickLaunchSupport.defaultModifierStorageValue
     @AppStorage(DefaultsKey.dockPreviewEnabled) private var dockPreviewEnabled = false
     @AppStorage(DefaultsKey.dockPreviewBackgroundOpacity) private var dockPreviewBackgroundOpacity = 1.0
     @AppStorage(DefaultsKey.dockPreviewOpenDelay) private var dockPreviewOpenDelay = DockPreviewSupport.defaultOpenDelayMilliseconds
@@ -885,6 +889,7 @@ struct SwitcherSettings: View {
     private var switcherShortcutDisplayString: String {
         (GlobalShortcut(storageValue: switcherShortcutStorage) ?? .switcherDefault).displayString
     }
+    private var quickLaunchText: QuickLaunchStrings { FeatureStrings.quickLaunch(l10n.language) }
 
     var body: some View {
         Form {
@@ -989,6 +994,42 @@ struct SwitcherSettings: View {
                     SwitcherAppRulesList()
                 }
                 .settingsSectionAnchor(.switcher)
+
+                Section(quickLaunchText.sectionTitle) {
+                    Toggle(quickLaunchText.enableToggle, isOn: $switcherQuickLaunchEnabled)
+                        .onChange(of: switcherQuickLaunchEnabled) { _, _ in
+                            AppSwitcher.shared.syncWithPreferences()
+                        }
+                    Text(quickLaunchText.enableCaption)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Picker(quickLaunchText.modifierLabel, selection: $switcherQuickLaunchModifierStorage) {
+                        Text(quickLaunchText.modifierRightCommand)
+                            .tag(SwitcherQuickLaunchSupport.Modifier.rightCommand.rawValue)
+                        Text(quickLaunchText.modifierLeftCommand)
+                            .tag(SwitcherQuickLaunchSupport.Modifier.leftCommand.rawValue)
+                        Text(quickLaunchText.modifierRightOption)
+                            .tag(SwitcherQuickLaunchSupport.Modifier.rightOption.rawValue)
+                        Text(quickLaunchText.modifierLeftOption)
+                            .tag(SwitcherQuickLaunchSupport.Modifier.leftOption.rawValue)
+                        Text(quickLaunchText.modifierRightControl)
+                            .tag(SwitcherQuickLaunchSupport.Modifier.rightControl.rawValue)
+                        Text(quickLaunchText.modifierLeftControl)
+                            .tag(SwitcherQuickLaunchSupport.Modifier.leftControl.rawValue)
+                    }
+                    .disabled(!switcherQuickLaunchEnabled)
+                    .onChange(of: switcherQuickLaunchModifierStorage) { _, _ in
+                        AppSwitcher.shared.syncWithPreferences()
+                    }
+
+                    QuickLaunchPrioritiesList()
+                        .disabled(!switcherQuickLaunchEnabled)
+
+                    if switcherQuickLaunchEnabled, !permissions.accessibility {
+                        PermissionRow(kind: .accessibility)
+                    }
+                }
             }
             if AppFeature.dockPreview.isAvailable {
                 Section {

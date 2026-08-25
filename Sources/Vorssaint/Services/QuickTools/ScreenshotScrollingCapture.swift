@@ -73,7 +73,8 @@ enum ScreenshotScrollingCapture {
                         hideVorssaintWindows: Bool,
                         protectedWindowIDs: Set<CGWindowID>,
                         finishSignal: FinishSignal,
-                        onProgress: @escaping @MainActor (Int) -> Void) async -> Result {
+                        onProgress: @escaping @MainActor (Int) -> Void,
+                        onLongCaptureWarning: @escaping @MainActor () -> Void) async -> Result {
         let activity = ScrollActivity()
         let monitors = await installMonitors(activity: activity)
         let result = await captureWhileScrolling(
@@ -83,7 +84,8 @@ enum ScreenshotScrollingCapture {
             protectedWindowIDs: protectedWindowIDs,
             finishSignal: finishSignal,
             activity: activity,
-            onProgress: onProgress)
+            onProgress: onProgress,
+            onLongCaptureWarning: onLongCaptureWarning)
         await removeMonitors(monitors)
         return result
     }
@@ -95,7 +97,8 @@ enum ScreenshotScrollingCapture {
         protectedWindowIDs: Set<CGWindowID>,
         finishSignal: FinishSignal,
         activity: ScrollActivity,
-        onProgress: @escaping @MainActor (Int) -> Void
+        onProgress: @escaping @MainActor (Int) -> Void,
+        onLongCaptureWarning: @escaping @MainActor () -> Void
     ) async -> Result {
         do {
             let startingGeneration = activity.snapshot.generation
@@ -122,6 +125,7 @@ enum ScreenshotScrollingCapture {
             var lastCaptureAt = ProcessInfo.processInfo.systemUptime
             var scrollPending = false
             var finishRequestedAt: TimeInterval?
+            var longCaptureWarningIssued = false
             await onProgress(totalHeight)
 
             while true {
@@ -145,13 +149,16 @@ enum ScreenshotScrollingCapture {
                         activityGeneration: currentActivity.generation,
                         lastMatchedGeneration: lastMatchedGeneration)
                 }
-                if now - startedAt
-                    >= ScreenshotSupport.scrollingCaptureMaximumDuration
+                // Duration and frame count are no longer a hard stop: a person
+                // reading a genuinely long page would rather keep going than
+                // have the capture end under them. One warning is plenty; the
+                // memory guards further down stay hard stops, since those
+                // protect against an actual crash rather than a preference.
+                if !longCaptureWarningIssued,
+                   now - startedAt >= ScreenshotSupport.scrollingCaptureMaximumDuration
                     || slices.count >= ScreenshotSupport.scrollingCaptureMaximumFrames {
-                    return completed(slices: slices,
-                                     footerSlice: footerSlice,
-                                     region: region,
-                                     result: .limited)
+                    longCaptureWarningIssued = true
+                    await onLongCaptureWarning()
                 }
 
                 guard scrollPending else {

@@ -70,6 +70,9 @@ enum DefaultsKey {
     static let switcherCurrentSpaceOnly = "switcherCurrentSpaceOnly" // list only windows on the desktop the user is in (issue #337)
     static let switcherSearchPinEnabled = "switcherSearchPinEnabled" // S pins the search field open, off by default so existing users typing S as a search letter see no change
     static let switcherShowShortcutHints = "switcherShowShortcutHints" // show the shortcut bar under the large-icon switcher
+    static let switcherQuickLaunchEnabled = "switcherQuickLaunchEnabled" // hold a modifier, tap a letter, activate the matching running app
+    static let switcherQuickLaunchModifier = "switcherQuickLaunchModifier" // SwitcherQuickLaunchSupport.Modifier raw value
+    static let switcherQuickLaunchPriorities = "switcherQuickLaunchPriorities" // [letter: [bundle id]] ordered cycling priority, also doubles as a manual assignment
     static let dockPreviewEnabled = "dockPreviewEnabled"
     static let dockPreviewBackgroundOpacity = "dockPreviewBackgroundOpacity" // how solid the preview panel's material is drawn (DockPreviewSupport.backgroundOpacityRange)
     static let dockPreviewOpenDelay = "dockPreviewOpenDelay" // milliseconds the cursor must rest on a Dock icon before its panel opens (DockPreviewSupport.openDelayMillisecondsRange)
@@ -423,6 +426,11 @@ enum DefaultsKey {
     static let cameraPreviewShortcut = "cameraPreviewShortcut"
     static let scratchpadShortcutEnabled = "scratchpadShortcutEnabled"
     static let scratchpadShortcut = "scratchpadShortcut"
+    static let pixelRulerShortcutEnabled = "pixelRulerShortcutEnabled"
+    static let pixelRulerShortcut = "pixelRulerShortcut"
+    static let pixelRulerTolerance = "pixelRulerTolerance"     // PixelRulerTolerance.rawValue
+    static let pixelRulerUnit = "pixelRulerUnit"               // PixelRulerUnit.rawValue
+    static let panelUtilityPixelRuler = "panelUtilityPixelRuler"
     static let commandBarShortcutEnabled = "commandBarShortcutEnabled"
     static let commandBarShortcut = "commandBarShortcut"
     static let commandBarUsage = "commandBarUsage"           // per-command run counts, never queries
@@ -798,6 +806,9 @@ enum Defaults {
         DefaultsKey.switcherCurrentSpaceOnly: false,
         DefaultsKey.switcherSearchPinEnabled: false,
         DefaultsKey.switcherShowShortcutHints: true,
+        DefaultsKey.switcherQuickLaunchEnabled: false,
+        DefaultsKey.switcherQuickLaunchModifier: SwitcherQuickLaunchSupport.defaultModifierStorageValue,
+        DefaultsKey.switcherQuickLaunchPriorities: [String: [String]](),
         DefaultsKey.dockPreviewEnabled: false,
         DefaultsKey.dockPreviewBackgroundOpacity: 1.0,
         DefaultsKey.dockPreviewOpenDelay: DockPreviewSupport.defaultOpenDelayMilliseconds,
@@ -1102,6 +1113,10 @@ enum Defaults {
         DefaultsKey.cameraPreviewShortcut: GlobalShortcut.cameraPreviewDefault.storageValue,
         DefaultsKey.scratchpadShortcutEnabled: false,
         DefaultsKey.scratchpadShortcut: GlobalShortcut.scratchpadDefault.storageValue,
+        DefaultsKey.pixelRulerShortcutEnabled: false,
+        DefaultsKey.pixelRulerShortcut: GlobalShortcut.pixelRulerDefault.storageValue,
+        DefaultsKey.pixelRulerTolerance: PixelRulerTolerance.low.rawValue,
+        DefaultsKey.pixelRulerUnit: PixelRulerUnit.pixel.rawValue,
         DefaultsKey.commandBarShortcutEnabled: false,
         DefaultsKey.commandBarDisabledSources: "",
         DefaultsKey.commandBarAliases: "",

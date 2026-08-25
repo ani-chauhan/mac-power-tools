@@ -497,7 +497,7 @@ private enum UtilityPanelItem: String, PanelOrderItem, Identifiable {
     // are migrated once without disturbing the rest of the user's layout.
     case screenshot, quickLauncher, appUpdates, cleaner, homebrew, media, clipboard, windowLayout,
          uninstaller, cleanURL, cleaning, screenOCR, colorPicker, cameraPreview, scratchpad,
-         commandBar, screenRecorder
+         commandBar, screenRecorder, pixelRuler
 
     var id: String { rawValue }
 
@@ -522,6 +522,7 @@ private enum UtilityPanelItem: String, PanelOrderItem, Identifiable {
         case .cameraPreview: return .cameraPreview
         case .scratchpad: return .scratchpad
         case .commandBar: return .commandBar
+        case .pixelRuler: return .pixelRuler
         }
     }
 }
@@ -554,6 +555,7 @@ struct UtilitiesSection: View {
     @AppStorage(DefaultsKey.panelUtilityColorPicker) private var showColorPicker = true
     @AppStorage(DefaultsKey.panelUtilityCameraPreview) private var showCameraPreview = true
     @AppStorage(DefaultsKey.panelUtilityScratchpad) private var showScratchpad = true
+    @AppStorage(DefaultsKey.panelUtilityPixelRuler) private var showPixelRuler = true
     @AppStorage(DefaultsKey.panelUtilityCommandBar) private var showCommandBar = true
     @AppStorage(DefaultsKey.panelUtilityScreenRecorder) private var showScreenRecorder = true
     @ObservedObject private var recorder = ScreenRecorderService.shared
@@ -684,6 +686,7 @@ struct UtilitiesSection: View {
         case .colorPicker: return showColorPicker
         case .cameraPreview: return showCameraPreview
         case .scratchpad: return showScratchpad
+        case .pixelRuler: return showPixelRuler
         case .commandBar: return showCommandBar
         case .quickLauncher: return showQuickLauncher
         case .screenshot: return showScreenshot
@@ -902,6 +905,20 @@ struct UtilitiesSection: View {
                                         ScratchpadService.shared.show()
                                     }
                                 })
+        case .pixelRuler:
+            UtilityActionButton(title: FeatureStrings.pixelRuler(l10n.language).pageTitle,
+                                caption: FeatureStrings.pixelRuler(l10n.language).panelCaption,
+                                systemImage: "ruler",
+                                isEditing: editing,
+                                showsDragHandle: true,
+                                visibility: $showPixelRuler,
+                                shortcutHint: shortcutHint(.pixelRuler),
+                                action: {
+                                    appDelegate()?.closePopover()
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                                        PixelRulerService.shared.toggle()
+                                    }
+                                })
         case .quickLauncher:
             UtilityActionButton(title: l10n.s.launcherName,
                                 caption: l10n.s.launcherCaption,
@@ -1005,6 +1022,7 @@ struct UtilitiesSection: View {
         showColorPicker = true
         showCameraPreview = true
         showScratchpad = true
+        showPixelRuler = true
         showQuickLauncher = true
         showCommandBar = true
     }

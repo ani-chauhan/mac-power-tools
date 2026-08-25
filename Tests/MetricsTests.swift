@@ -8716,6 +8716,87 @@ struct MetricsTests {
                                                     preferredID: "beta",
                                                     previousIndex: 2) == 0,
                "App Switcher search falls back to a valid selection")
+        // MARK: Quick launch (App Rcmd style hold-modifier-tap-letter)
+
+        expect(SwitcherQuickLaunchSupport.isHeld(.rightCommand, flags: 0x0010_0000 | 0x0000_0010),
+               "Quick launch recognizes right command held alone")
+        expect(!SwitcherQuickLaunchSupport.isHeld(.rightCommand, flags: 0x0010_0000 | 0x0000_0008),
+               "Quick launch does not confuse left command for right command")
+        expect(!SwitcherQuickLaunchSupport.isHeld(.rightCommand, flags: 0x0010_0000),
+               "Quick launch requires the device-dependent bit, not just the group flag (rejects synthetic events)")
+        expect(!SwitcherQuickLaunchSupport.isHeld(.rightCommand,
+                                                  flags: 0x0010_0000 | 0x0000_0010 | 0x0002_0000),
+               "Quick launch does not fire when another primary modifier (shift) is also held")
+        expect(SwitcherQuickLaunchSupport.modifier(from: "rightCommand") == .rightCommand,
+               "Quick launch modifier storage round-trips")
+        expect(SwitcherQuickLaunchSupport.modifier(from: "not-a-real-value") == SwitcherQuickLaunchSupport.defaultModifier,
+               "Quick launch falls back to the default modifier for an unrecognized stored value")
+
+        expect(SwitcherQuickLaunchSupport.letter(typedCharacter: "f", keyCode: 3) == "f",
+               "Quick launch reads the typed character directly")
+        expect(SwitcherQuickLaunchSupport.letter(typedCharacter: "É", keyCode: 14) == "e",
+               "Quick launch folds accents on the typed character")
+        expect(SwitcherQuickLaunchSupport.letter(typedCharacter: nil, keyCode: 3) == "f",
+               "Quick launch falls back to US key position when nothing Latin was typed")
+        expect(SwitcherQuickLaunchSupport.letter(typedCharacter: "1", keyCode: 18) == nil,
+               "Quick launch treats a non-letter keystroke as no letter")
+
+        let assignmentsStored: [String: Any] = ["K": ["com.tinyspeck.slackmacgap", " "], "": ["x"], "AB": ["y"]]
+        let decodedAssignments = SwitcherQuickLaunchSupport.assignments(storedValue: assignmentsStored)
+        expect(decodedAssignments == ["k": ["com.tinyspeck.slackmacgap"]],
+               "Quick launch assignments decode only single-letter keys and drop blank entries")
+        expect(SwitcherQuickLaunchSupport.storedValue(["f": ["com.apple.finder", "  "]]) == ["F": ["com.apple.finder"]],
+               "Quick launch assignments re-encode to uppercase letter keys with blanks trimmed")
+
+        let promoted = SwitcherQuickLaunchSupport.promoting(
+            "org.mozilla.firefox", to: "f",
+            in: ["f": ["com.apple.finder", "org.mozilla.firefox"], "k": ["com.tinyspeck.slackmacgap"]])
+        expect(promoted["f"] == ["org.mozilla.firefox", "com.apple.finder"],
+               "Quick launch promotion moves the activated app to the front and keeps the rest in order")
+        expect(promoted["k"] == ["com.tinyspeck.slackmacgap"],
+               "Quick launch promotion leaves other letters untouched")
+        expect(SwitcherQuickLaunchSupport.promoting("com.figma.Desktop", to: "f", in: [:])["f"] == ["com.figma.Desktop"],
+               "Quick launch promotion creates a letter's list from scratch on first use")
+
+        let finder = SwitcherQuickLaunchSupport.RunningApp(pid: 1, bundleID: "com.apple.finder", name: "Finder", mruRank: 2)
+        let figma = SwitcherQuickLaunchSupport.RunningApp(pid: 2, bundleID: "com.figma.Desktop", name: "Figma", mruRank: 0)
+        let firefox = SwitcherQuickLaunchSupport.RunningApp(pid: 3, bundleID: "org.mozilla.firefox", name: "Firefox", mruRank: .max)
+        let slack = SwitcherQuickLaunchSupport.RunningApp(pid: 4, bundleID: "com.tinyspeck.slackmacgap", name: "Slack", mruRank: .max)
+        let fRoster = SwitcherQuickLaunchSupport.roster(
+            apps: [finder, figma, firefox, slack],
+            assignments: ["f": ["org.mozilla.firefox"], "k": ["com.tinyspeck.slackmacgap"]])
+        expect(fRoster["f"]?.map(\.pid) == [3, 2, 1],
+               "Quick launch roster puts the assigned app first, then remaining matches by MRU rank")
+        expect(fRoster["k"]?.map(\.pid) == [4],
+               "Quick launch roster lets an assignment reach a letter the app name does not start with")
+        expect(SwitcherQuickLaunchSupport.roster(apps: [finder], assignments: [:])["z"] == nil,
+               "Quick launch roster has no entry for a letter with zero candidates")
+
+        var idleHold = SwitcherQuickLaunchSupport.Hold.idle
+        let roster: [Character: [SwitcherQuickLaunchSupport.Target]] =
+            ["f": [SwitcherQuickLaunchSupport.Target(pid: 3, name: "Firefox"),
+                   SwitcherQuickLaunchSupport.Target(pid: 2, name: "Figma")]]
+        expect(SwitcherQuickLaunchSupport.decide(letter: "z", isRepeat: false, roster: roster, hold: &idleHold) == .ignore,
+               "Quick launch passes a letter with no match straight through")
+        expect(SwitcherQuickLaunchSupport.decide(letter: "f", isRepeat: false, roster: roster, hold: &idleHold)
+                   == .activate(pid: 3, name: "Firefox"),
+               "Quick launch activates the top match on the first press of a letter")
+        expect(SwitcherQuickLaunchSupport.decide(letter: "f", isRepeat: true, roster: roster, hold: &idleHold) == .swallow,
+               "Quick launch swallows autorepeat of the letter that started the hold")
+        expect(SwitcherQuickLaunchSupport.decide(letter: "f", isRepeat: false, roster: roster, hold: &idleHold)
+                   == .activate(pid: 2, name: "Figma"),
+               "Quick launch cycles to the next match on a fresh press of the same letter")
+        expect(SwitcherQuickLaunchSupport.decide(letter: "f", isRepeat: false, roster: roster, hold: &idleHold)
+                   == .activate(pid: 3, name: "Firefox"),
+               "Quick launch wraps back to the top match after the last one")
+        let shrunkRoster: [Character: [SwitcherQuickLaunchSupport.Target]] =
+            ["f": [SwitcherQuickLaunchSupport.Target(pid: 9, name: "Only")]]
+        expect(SwitcherQuickLaunchSupport.decide(letter: "g", isRepeat: false, roster: shrunkRoster, hold: &idleHold) == .ignore,
+               "Quick launch pressing a different unmatched letter clears the hold instead of reusing the old cycle")
+        expect(SwitcherQuickLaunchSupport.decide(letter: "f", isRepeat: false, roster: shrunkRoster, hold: &idleHold)
+                   == .activate(pid: 9, name: "Only"),
+               "Quick launch re-reads the roster fresh when the letter changes mid-hold")
+
         // MARK: Release notes parsing
 
         let changelog = """
@@ -9890,7 +9971,7 @@ struct MetricsTests {
 
         // MARK: Features hub catalog
 
-        expect(AppFeature.allCases.count == 54, "feature catalog has 54 features")
+        expect(AppFeature.allCases.count == 55, "feature catalog has 55 features")
         expect(Set(AppFeature.allCases.map(\.rawValue)).count == AppFeature.allCases.count,
                "feature ids are unique")
         expect(AppFeature.allCases.map(\.rawValue) == [
@@ -9903,7 +9984,7 @@ struct MetricsTests {
             "keepAwake", "brightness", "extraBrightness", "bluetoothSleep",
             "quickLauncher", "quickToggles", "colorPicker", "screenOCR", "cleaningMode", "mediaTools",
             "cleaner", "uninstaller", "homebrew", "appUpdates", "screenshot", "cameraPreview",
-            "radialMenu", "scratchpad", "commandBar", "screenRecorder", "killProcess",
+            "radialMenu", "scratchpad", "commandBar", "screenRecorder", "killProcess", "pixelRuler",
             "monitorCPU", "monitorGPU", "monitorMemory", "monitorNetwork", "monitorDisk", "monitorPower",
             "fanControl",
         ], "feature ids are stable (they persist inside availability keys)")
@@ -9914,9 +9995,10 @@ struct MetricsTests {
                 && (AppFeature.availabilityDefaults[AppFeature.diskImageInstaller.availabilityKey] as? Bool) == false
                 && (AppFeature.availabilityDefaults[AppFeature.focusFollowsMouse.availabilityKey] as? Bool) == false
                 && (AppFeature.availabilityDefaults[AppFeature.killProcess.availabilityKey] as? Bool) == false
+                && (AppFeature.availabilityDefaults[AppFeature.pixelRuler.availabilityKey] as? Bool) == false
                 && AppFeature.allCases.filter {
                     $0 != .focusFollowsMouse && $0 != .fanControl && $0 != .diskImageInstaller
-                        && $0 != .killProcess
+                        && $0 != .killProcess && $0 != .pixelRuler
                 }.allSatisfy {
                     (AppFeature.availabilityDefaults[$0.availabilityKey] as? Bool) == true
                 },
@@ -10413,11 +10495,11 @@ struct MetricsTests {
                "mixer without precise volume roller does not use accessibility")
 
         expect(activeSet(.screenRecording, on: [DefaultsKey.switcherEnabled])
-                == [.switcher, .screenOCR, .screenshot, .screenRecorder],
-               "switcher with previews uses screen recording; OCR, screenshots and recordings are on demand")
+                == [.switcher, .screenOCR, .screenshot, .screenRecorder, .pixelRuler],
+               "switcher with previews uses screen recording; OCR, screenshots, recordings and the pixel ruler are on demand")
         expect(activeSet(.screenRecording,
                          on: [DefaultsKey.switcherEnabled, DefaultsKey.switcherSimpleMode])
-                == [.screenOCR, .screenshot, .screenRecorder],
+                == [.screenOCR, .screenshot, .screenRecorder, .pixelRuler],
                "simple-mode switcher stops using screen recording")
         expect(activeSet(.screenRecording,
                          on: [DefaultsKey.switcherSimpleMode, DefaultsKey.dockPreviewEnabled])
@@ -11857,11 +11939,11 @@ struct MetricsTests {
                 && ScreenshotSupport.sanitizedDelay(7) == 0
                 && ScreenshotSupport.sanitizedDelay(-3) == 0,
                "capture delay only accepts the offered steps")
-        expect(ScreenshotSupport.scrollingCaptureMaximumDuration == 120
-                && ScreenshotSupport.scrollingCaptureMaximumFrames == 512
-                && ScreenshotSupport.scrollingCaptureMaximumRetainedPixels == 60_000_000
-                && ScreenshotSupport.scrollingCaptureMaximumPixels == 60_000_000,
-               "manual scrolling screenshots have explicit loop and memory safeguards")
+        expect(ScreenshotSupport.scrollingCaptureMaximumDuration == 1200
+                && ScreenshotSupport.scrollingCaptureMaximumFrames == 5120
+                && ScreenshotSupport.scrollingCaptureMaximumRetainedPixels == 600_000_000
+                && ScreenshotSupport.scrollingCaptureMaximumPixels == 600_000_000,
+               "manual scrolling screenshots warn (not stop) past the duration and frame count, and stop only at the memory safeguard")
 
         func scrollingSample(width: Int = 16,
                              height: Int = 120,
@@ -16541,6 +16623,80 @@ struct MetricsTests {
         expect(privateMode(privateRoot) == 0o700,
                "a container an earlier version left world readable is tightened on the next write")
         try? FileManager.default.removeItem(at: privateRoot)
+
+        // MARK: Pixel ruler edge scan
+
+        expect(PixelRulerScan.scan(x: -1, y: 0, width: 10, height: 10, tolerance: 8) { _, _ in 0 }
+                == PixelRulerScan.Reading(up: 0, down: 0, left: 0, right: 0),
+               "a cursor position outside the buffer reads as zero in every direction")
+
+        // A single sharp edge, no noise: the origin sits 10px left of a step
+        // from 100 to 200, well past the low-tolerance threshold.
+        do {
+            func hardEdge(x: Int, y: Int) -> Int { x < 20 ? 100 : 200 }
+            let reading = PixelRulerScan.scan(x: 10, y: 2, width: 40, height: 5,
+                                              tolerance: PixelRulerTolerance.low.threshold,
+                                              luminance: hardEdge)
+            expect(reading.right == 10, "a hard edge is found exactly at its true distance")
+        }
+
+        // macOS dithers shadows/gradients with a per-pixel checkerboard noise
+        // to hide banding — a flat region carrying only that noise must not
+        // read as an edge close to the cursor (issue: pixel ruler read
+        // shadows/gradients as jittery, wrong edges).
+        do {
+            func flatDithered(x: Int, y: Int) -> Int { 150 + ((x + y) % 2 == 0 ? 4 : -4) }
+            let reading = PixelRulerScan.scan(x: 20, y: 2, width: 40, height: 5,
+                                              tolerance: PixelRulerTolerance.low.threshold,
+                                              luminance: flatDithered)
+            expect(reading.right == 19 && reading.left == 20,
+                   "checkerboard dithering with no real edge walks to the buffer bound, "
+                   + "not a false edge a step or two out")
+        }
+
+        // The same dithering pattern still can't hide a genuine edge: the
+        // perpendicular smoothing that cancels the checkerboard, plus
+        // localizing off the two stable plateau colors rather than the
+        // noisy anchor pixel itself, keeps the reading within a pixel of
+        // the true boundary through dithering noise.
+        do {
+            func edgeDithered(x: Int, y: Int) -> Int {
+                (x < 20 ? 150 : 220) + ((x + y) % 2 == 0 ? 4 : -4)
+            }
+            let reading = PixelRulerScan.scan(x: 10, y: 2, width: 40, height: 5,
+                                              tolerance: PixelRulerTolerance.low.threshold,
+                                              luminance: edgeDithered)
+            expect(abs(reading.right - 10) <= 1,
+                   "a real edge is still found near its true distance through dithering noise")
+        }
+
+        // A soft edge (e.g. a shadow's anti-aliased falloff): a ramp from
+        // one stable plateau (100) to another (200), passing exactly
+        // through the 50%-brightness value (150) at its middle pixel. This
+        // is the actual fix for "shadows/gradients read as jittery, wrong
+        // edges": detection alone would land wherever `tolerance` first
+        // trips inside the ramp, but localization always resolves to the
+        // same plateau-to-plateau midpoint regardless — so every tolerance
+        // level below must report the identical, correct distance.
+        do {
+            func softEdge(x: Int, y: Int) -> Int {
+                switch x {
+                case ..<10: return 100
+                case 10: return 125
+                case 11: return 150
+                case 12: return 175
+                default: return 200
+                }
+            }
+            let byTolerance = PixelRulerTolerance.allCases.map {
+                PixelRulerScan.scan(x: 0, y: 2, width: 40, height: 5,
+                                   tolerance: $0.threshold, luminance: softEdge).right
+            }
+            expect(byTolerance == Array(repeating: 11, count: byTolerance.count),
+                   "a soft edge localizes to the same midpoint distance (11) at every "
+                   + "tolerance level, not wherever tolerance first trips inside the ramp — "
+                   + "got \(byTolerance)")
+        }
 
         // MARK: Result
 

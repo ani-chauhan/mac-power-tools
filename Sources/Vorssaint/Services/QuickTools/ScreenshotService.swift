@@ -57,6 +57,10 @@ final class ScreenshotService: ObservableObject {
         if let number = QuickToolHUD.currentScrollingWindowNumber, number > 0 {
             ids.insert(CGWindowID(number))
         }
+        if let number = QuickToolHUD.currentRegionGuideWindowNumber, number > 0 {
+            ids.insert(CGWindowID(number))
+        }
+        ids.formUnion(PixelRulerService.shared.protectedWindowIDs)
         return ids
     }
 
@@ -315,6 +319,7 @@ final class ScreenshotService: ObservableObject {
             cancelTitle: strings.cancel,
             onFinish: { finishSignal.request() },
             onCancel: { [weak self] in self?.scrollingTask?.cancel() })
+        QuickToolHUD.showScrollingRegionGuide(for: region)
         // Read after the controls are on screen so their window is protected,
         // and once for the whole run: the picture must not change halfway.
         let hideWindows = hideVorssaintWindows
@@ -331,12 +336,18 @@ final class ScreenshotService: ObservableObject {
                 finishSignal: finishSignal,
                 onProgress: { height in
                     QuickToolHUD.updateScrollingCapture(height: height)
+                },
+                onLongCaptureWarning: { [weak self] in
+                    guard let self else { return }
+                    QuickToolHUD.show(icon: "exclamationmark.triangle",
+                                      message: self.strings.scrollingCaptureLongWarningHUD)
                 })
             guard self.scrollingCaptureID == captureID else { return }
             self.scrollingCaptureID = nil
             self.scrollingTask = nil
             self.scrollingFinishSignal = nil
             QuickToolHUD.dismissScrollingCapture()
+            QuickToolHUD.dismissScrollingRegionGuide()
             switch result {
             case .success(let capture):
                 self.route(capture)
