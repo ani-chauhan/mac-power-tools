@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 Vorssaint
+// Copyright (C) 2026 Mac Power Tools
 
 import SwiftUI
 import UniformTypeIdentifiers
@@ -81,7 +81,7 @@ private struct ShelfPill: View {
         }
     }
 
-    /// The Vorssaint mark, quiet, so the pill is unmistakably the app's; it
+    /// The Mac Power Tools mark, quiet, so the pill is unmistakably the app's; it
     /// flips to a green tick for a beat right after a catch.
     @ViewBuilder
     private var leadingGlyph: some View {

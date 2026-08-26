@@ -5,13 +5,9 @@ import Foundation
 
 /// Static identity of the app, shared by UI, notifications and tooling.
 enum AppInfo {
-    static let name = "Vorssaint"
-    static let copyright = "© 2026 Vorssaint"
-    static let websiteURL = URL(string: "https://vorssaint.com")!
-    static let repositoryURL = URL(string: "https://github.com/vorssaintapp/vorssaint-utils")!
-    static let coffeeURL = URL(string: "https://buymeacoffee.com/vorssaint")!
-    static let discordURL = URL(string: "https://discord.gg/M6BwWH4BJp")!
-    static let socialURL = URL(string: "https://x.com/vorssaint")!
+    static let name = "Mac Power Tools"
+    static let copyright = "© 2026 Anirudh Chauhan"
+    static let repositoryURL = URL(string: "https://github.com/ani-chauhan/mac-power-tools")!
 
     /// The bundle version. The fallback only applies to the bare binary
     /// (e.g. `--selftest`), never the shipped app, which reads its Info.plist.
@@ -19,7 +15,7 @@ enum AppInfo {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
     }
 
-    /// True for the local "Vorssaint (Developer)" build (bundle id ends in `.dev`).
+    /// True for the local "Mac Power Tools (Developer)" build (bundle id ends in `.dev`).
     /// It is never published and never auto-updates; all work is tested here first.
     static var isDeveloperBuild: Bool {
         (Bundle.main.bundleIdentifier ?? "").hasSuffix(".dev")
@@ -39,6 +35,6 @@ enum AppInfo {
     /// this into the Developer bundle only, so you can confirm at a glance that the
     /// running dev app matches the source you are about to change. nil in the official app.
     static var buildCommit: String? {
-        Bundle.main.object(forInfoDictionaryKey: "VorssaintBuildCommit") as? String
+        Bundle.main.object(forInfoDictionaryKey: "MacPowerToolsBuildCommit") as? String
     }
 }

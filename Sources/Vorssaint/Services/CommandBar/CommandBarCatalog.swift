@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 Vorssaint
+// Copyright (C) 2026 Mac Power Tools
 
 import AppKit
 
@@ -700,19 +700,6 @@ enum CommandBarCatalog {
                     CommandBarService.shared.query = ""
                 }))
         }
-        let feedback = FeatureStrings.feedback(language)
-        entries.append(CommandBarEntry(
-            id: "action.feedback.bug",
-            title: feedback.commandBug,
-            subtitle: feedback.commandSubtitle,
-            icon: .symbol("ladybug"),
-            run: { _ in afterBeat { appDelegate()?.openFeedbackWindow(kind: .bug) } }))
-        entries.append(CommandBarEntry(
-            id: "action.feedback.feature",
-            title: feedback.commandFeature,
-            subtitle: feedback.commandSubtitle,
-            icon: .symbol("lightbulb"),
-            run: { _ in afterBeat { appDelegate()?.openFeedbackWindow(kind: .feature) } }))
         // What people try on day one: put the Mac to sleep, restart it, turn
         // Wi-Fi off. Everything but sleep confirms on the row first.
         for action in CommandBarExtras.PowerAction.allCases {
@@ -923,7 +910,7 @@ enum CommandBarCatalog {
     // MARK: - Running apps and their windows
 
     /// Menu commands of the app in front, each one runnable and each one
-    /// showing its own shortcut. This is how the bar reaches past Vorssaint
+    /// showing its own shortcut. This is how the bar reaches past Mac Power Tools
     /// without searching files or the internet.
     static func menuEntries(_ items: [CommandBarMenuItem],
                             appName: String,

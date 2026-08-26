@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 Vorssaint
+// Copyright (C) 2026 Mac Power Tools
 
 import AppKit
 import ApplicationServices
@@ -203,7 +203,7 @@ enum WindowActivator {
     ///
     /// Our own windows are refused rather than special-cased: reading this
     /// process's own Accessibility tree from the main thread is the one call
-    /// that can deadlock, and Vorssaint has no Dock icon to drag a preview
+    /// that can deadlock, and Mac Power Tools has no Dock icon to drag a preview
     /// from in the first place.
     @discardableResult
     static func setWindowOrigin(_ origin: CGPoint, windowID: CGWindowID, pid: pid_t) -> Bool {

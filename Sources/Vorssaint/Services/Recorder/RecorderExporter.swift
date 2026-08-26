@@ -461,7 +461,7 @@ final class RecorderExporter {
             return nil
         }
         let directory = cache
-            .appendingPathComponent(Bundle.main.bundleIdentifier ?? "com.vorssaint.utils",
+            .appendingPathComponent(Bundle.main.bundleIdentifier ?? "com.macpowertools.app",
                                     isDirectory: true)
             .appendingPathComponent("Temporary Recording Uploads", isDirectory: true)
         do {

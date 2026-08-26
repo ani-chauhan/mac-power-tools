@@ -24,16 +24,16 @@ for arg in "$@"; do
 done
 
 if (( DEV )); then
-    APP_NAME="Vorssaint (Developer)"
-    EXECUTABLE="VorssaintDeveloper"
-    APP_BUNDLE_ID="com.vorssaint.utils.dev"
+    APP_NAME="Mac Power Tools (Developer)"
+    EXECUTABLE="MacPowerToolsDeveloper"
+    APP_BUNDLE_ID="com.macpowertools.app.dev"
     BUILD_VARIANT_FLAGS=(-D VORSSAINT_DEVELOPMENT)
     APP_OPTIMIZATION_FLAGS=(-Onone)
     BUILD_CONFIGURATION="debug"
 else
-    APP_NAME="Vorssaint"
-    EXECUTABLE="Vorssaint"
-    APP_BUNDLE_ID="com.vorssaint.utils"
+    APP_NAME="Mac Power Tools"
+    EXECUTABLE="MacPowerTools"
+    APP_BUNDLE_ID="com.macpowertools.app"
     BUILD_VARIANT_FLAGS=()
     APP_OPTIMIZATION_FLAGS=(-O)
     BUILD_CONFIGURATION="release"
@@ -200,7 +200,6 @@ if (( TEST )); then
         Sources/Vorssaint/Core/PixelRulerStrings.swift \
         Sources/Vorssaint/Core/FinderRenameStrings.swift \
         Sources/Vorssaint/Core/CommandBarStrings.swift \
-        Sources/Vorssaint/Core/FeedbackStrings.swift \
         Sources/Vorssaint/Core/RadialMenuStrings.swift \
         Sources/Vorssaint/Core/MenuBarAppearanceStrings.swift \
         Sources/Vorssaint/Core/AppAppearance.swift \
@@ -228,7 +227,6 @@ if (( TEST )); then
         Sources/Vorssaint/Core/AppInfo.swift \
         Sources/Vorssaint/Core/GlobalShortcut.swift \
         Sources/Vorssaint/Core/Localization.swift \
-        Sources/Vorssaint/Core/Localizations/Strings+*.swift \
         Sources/Vorssaint/Core/FeatureStrings.swift \
         Sources/Vorssaint/Core/KillProcessStrings.swift \
         Sources/Vorssaint/Core/WhatsAppDownloadStrings.swift \
@@ -411,7 +409,7 @@ mkdir -p "$STAGE/Contents/MacOS" "$STAGE/Contents/Resources" \
     "$STAGE/Contents/Library/LaunchDaemons" "$STAGE/Contents/Library/LaunchServices"
 cp "build/$EXECUTABLE" "$STAGE/Contents/MacOS/$EXECUTABLE"
 cp "build/$FAN_HELPER_ID" "$STAGE/Contents/Library/LaunchServices/$FAN_HELPER_ID"
-cp Resources/com.vorssaint.utils.fan-control.plist \
+cp Resources/com.macpowertools.app.fan-control.plist \
     "$STAGE/Contents/Library/LaunchDaemons/$FAN_HELPER_ID.plist"
 cp Resources/Info.plist "$STAGE/Contents/Info.plist"
 cp CHANGELOG.md "$STAGE/Contents/Resources/CHANGELOG.md"
@@ -421,21 +419,21 @@ done
 if (( DEV )); then
     # A distinct identity so the Developer build installs and runs next to the
     # official app, with its own permissions, preferences and login item.
-    /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.vorssaint.utils.dev" "$STAGE/Contents/Info.plist"
-    /usr/libexec/PlistBuddy -c "Set :CFBundleName Vorssaint (Developer)" "$STAGE/Contents/Info.plist"
-    /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Vorssaint (Developer)" "$STAGE/Contents/Info.plist"
+    /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.macpowertools.app.dev" "$STAGE/Contents/Info.plist"
+    /usr/libexec/PlistBuddy -c "Set :CFBundleName $APP_NAME" "$STAGE/Contents/Info.plist"
+    /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $APP_NAME" "$STAGE/Contents/Info.plist"
     /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable $EXECUTABLE" "$STAGE/Contents/Info.plist"
     FAN_PLIST="$STAGE/Contents/Library/LaunchDaemons/$FAN_HELPER_ID.plist"
     /usr/libexec/PlistBuddy -c "Set :Label $FAN_HELPER_ID" "$FAN_PLIST"
     /usr/libexec/PlistBuddy -c "Set :BundleProgram Contents/Library/LaunchServices/$FAN_HELPER_ID" "$FAN_PLIST"
-    /usr/libexec/PlistBuddy -c "Delete :MachServices:com.vorssaint.utils.fan-control" "$FAN_PLIST"
+    /usr/libexec/PlistBuddy -c "Delete :MachServices:com.macpowertools.app.fan-control" "$FAN_PLIST"
     /usr/libexec/PlistBuddy -c "Add :MachServices:$FAN_HELPER_ID bool true" "$FAN_PLIST"
     # Stamp the source commit + build time so the running dev app shows (in About)
     # exactly which code it was compiled from. Lets you verify it matches HEAD before
     # testing, instead of unknowingly running a stale build. Dev-only; never shipped.
     SHA="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
     [[ -n "$(git status --porcelain 2>/dev/null)" ]] && SHA="$SHA-dirty"
-    /usr/libexec/PlistBuddy -c "Add :VorssaintBuildCommit string '$SHA · $(date '+%Y-%m-%d %H:%M')'" "$STAGE/Contents/Info.plist"
+    /usr/libexec/PlistBuddy -c "Add :MacPowerToolsBuildCommit string '$SHA · $(date '+%Y-%m-%d %H:%M')'" "$STAGE/Contents/Info.plist"
     echo "  stamped dev build: $SHA"
 fi
 FAN_HELPER_VERSION="$(
@@ -446,7 +444,7 @@ FAN_HELPER_VERSION="$(
         | /usr/bin/awk '{print $1}' | /usr/bin/shasum -a 256 \
         | /usr/bin/awk '{print $1}'
 )"
-/usr/libexec/PlistBuddy -c "Add :VorssaintFanControlHelperVersion string '$FAN_HELPER_VERSION'" \
+/usr/libexec/PlistBuddy -c "Add :MacPowerToolsFanControlHelperVersion string '$FAN_HELPER_VERSION'" \
     "$STAGE/Contents/Info.plist"
 printf 'APPL????' > "$STAGE/Contents/PkgInfo"
 cp build/AppIcon.icns "$STAGE/Contents/Resources/AppIcon.icns"

@@ -160,15 +160,6 @@ private struct WelcomeStep: View {
             .frame(height: 220)
 
             VStack(alignment: .leading, spacing: 16) {
-                Picker(l10n.s.obLanguageLabel, selection: $l10n.language) {
-                    ForEach(AppLanguage.allCases) { language in
-                        Text(language.displayName).tag(language)
-                    }
-                }
-                // A menu (not segmented): with nine languages a segmented control
-                // would overflow, and several names are in their own script.
-                .pickerStyle(.menu)
-
                 featureRow(icon: "bolt.fill",
                            title: l10n.s.obWelcomeBullet1Title,
                            text: l10n.s.obWelcomeBullet1Body)

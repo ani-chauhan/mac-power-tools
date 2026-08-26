@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 Vorssaint
+// Copyright (C) 2026 Mac Power Tools
 
 import CoreGraphics
 import Carbon.HIToolbox
@@ -132,7 +132,7 @@ enum DefaultsKey {
     static let startupDidNotFinish = "startupDidNotFinish"
     static let bluetoothSleepEnabled = "bluetoothSleepEnabled"
     static let bluetoothSleepRestoreOnWake = "bluetoothSleepRestoreOnWake"
-    // Set only while Vorssaint owes a Bluetooth restore, so a Mac shut down
+    // Set only while Mac Power Tools owes a Bluetooth restore, so a Mac shut down
     // while asleep still gets it back on the next launch.
     static let bluetoothSleepRestorePending = "bluetoothSleepRestorePending"
     static let musicBlockEnabled = "musicBlockEnabled"
@@ -630,26 +630,11 @@ enum SupportUpdateIntroInfo {
     }
 }
 
+/// A single case today; kept as a `CaseIterable` enum (rather than removed
+/// outright) since it is still part of `UpdateSupportIntroView`'s public
+/// `init(initialStep:)` signature.
 enum SupportUpdateIntroStep: CaseIterable, Hashable {
-    case discord
-    case social
     case support
-
-    var next: SupportUpdateIntroStep? {
-        switch self {
-        case .discord: return .social
-        case .social: return .support
-        case .support: return nil
-        }
-    }
-
-    var previous: SupportUpdateIntroStep? {
-        switch self {
-        case .discord: return nil
-        case .social: return .discord
-        case .support: return .social
-        }
-    }
 }
 
 enum KeepAwakeIconTint: String, CaseIterable, Identifiable {

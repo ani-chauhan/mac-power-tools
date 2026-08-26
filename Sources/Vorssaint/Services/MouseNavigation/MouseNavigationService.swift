@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 Vorssaint
+// Copyright (C) 2026 Mac Power Tools
 
 import AppKit
 import ApplicationServices
@@ -260,7 +260,7 @@ final class MouseNavigationService: ObservableObject {
     private func pressMenuItem(shortcut: MouseNavigationKeys.Shortcut) -> MenuPressOutcome {
         guard let app = NSWorkspace.shared.frontmostApplication else { return .noNavigationCommand }
         let application = AXUIElementCreateApplication(app.processIdentifier)
-        // A busy target must not hold Vorssaint's main thread for AX's
+        // A busy target must not hold Mac Power Tools's main thread for AX's
         // multi-second default timeout. Child menu elements get the same
         // bound as they are traversed below.
         AXUIElementSetMessagingTimeout(application, 0.35)

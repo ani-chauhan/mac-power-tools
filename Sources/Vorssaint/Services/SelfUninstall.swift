@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 Vorssaint
+// Copyright (C) 2026 Mac Power Tools
 
 import AppKit
 import ServiceManagement
@@ -13,7 +13,7 @@ import ServiceManagement
 /// bundle id; and the only thing deleted is the app's own bundle, which is moved
 /// to the Trash (reversible). Nothing leaves the machine.
 enum SelfUninstall {
-    private static var bundleID: String { Bundle.main.bundleIdentifier ?? "com.vorssaint.utils" }
+    private static var bundleID: String { Bundle.main.bundleIdentifier ?? "com.macpowertools.app" }
 
     /// Resets every TCC permission the app holds, drops the login item and the
     /// optional closed-lid sudoers rule, and leaves the app in place. Calls back
@@ -36,7 +36,7 @@ enum SelfUninstall {
     }
 
     /// Clears permissions, removes preferences and saved state, sends the app
-    /// bundle to the Trash and quits. Used by "Uninstall Vorssaint completely".
+    /// bundle to the Trash and quits. Used by "Uninstall Mac Power Tools completely".
     static func uninstallCompletely() {
         DispatchQueue.main.async {
             suspendInputInterceptors()

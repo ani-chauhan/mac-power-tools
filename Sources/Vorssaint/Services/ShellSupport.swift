@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 Vorssaint
+// Copyright (C) 2026 Mac Power Tools
 
 import AppKit
 import CoreServices
@@ -26,7 +26,7 @@ enum Shell {
 
 /// Runs a command with administrator privileges (system password prompt).
 enum AdminShell {
-    // Vorssaint is a menu-bar agent (LSUIElement), so it is rarely the active
+    // Mac Power Tools is a menu-bar agent (LSUIElement), so it is rarely the active
     // app. SecurityAgent attaches its password dialog to the requesting process;
     // when that process is an inactive agent the dialog can open behind the
     // frontmost app and read as "no prompt appeared". Bringing the app forward
@@ -138,7 +138,7 @@ enum Sudoers {
     /// disable (launch recovery, a session ending) could resurrect a stale
     /// "1" after the flag was already cleared, leaving lid sleep off with
     /// nothing left to repair it.
-    private static let sleepStateQueue = DispatchQueue(label: "com.vorssaint.utils.pmset-state")
+    private static let sleepStateQueue = DispatchQueue(label: "com.macpowertools.app.pmset-state")
 
     /// Proves the passwordless path by running it: re-applying the current
     /// SleepDisabled state through `sudo -n` changes nothing on the system and

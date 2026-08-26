@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 Vorssaint
+// Copyright (C) 2026 Mac Power Tools
 
 import AVFoundation
 import AppKit
@@ -59,7 +59,7 @@ final class RecorderCaptureEngine: NSObject {
 
     // MARK: - Lifecycle
 
-    /// Builds the filter and starts the stream. Existing ordinary Vorssaint
+    /// Builds the filter and starts the stream. Existing ordinary Mac Power Tools
     /// windows remain recordable, while new app chrome stays excluded.
     func start(region: RecorderSupport.Region,
                frameRate: Int,

@@ -249,38 +249,14 @@ struct MetricsTests {
                                                                 triggerIsEnabled: false),
                "a queued clear is invalidated when its setting changes before pasteboard access")
 
-        expect(FeatureStrings.clipboard(.ptBR).shortcutHint.contains("colar no app anterior"),
-               "clipboard shortcut hint exposes row click paste in Portuguese")
-        expect(FeatureStrings.clipboard(.ptBR).shortcutHint.contains("⌘+clique seleciona"),
-               "clipboard shortcut hint exposes command click multi-select in Portuguese")
-        expect(FeatureStrings.clipboard(.ptBR).clickRowShortcut == "Clique na linha",
-               "clipboard visual shortcut exposes row click in Portuguese")
         expect(FeatureStrings.clipboard(.enUS).shortcutHint.contains("paste it into the previous app"),
                "clipboard shortcut hint exposes row click paste in English")
         expect(FeatureStrings.clipboard(.enUS).shortcutHint.contains("⌘-click selects"),
                "clipboard shortcut hint exposes command click multi-select in English")
         expect(FeatureStrings.clipboard(.enUS).commandClickShortcut == "⌘ Click",
                "clipboard visual shortcut exposes command click in English")
-        expect(FeatureStrings.clipboard(.tr).shortcutHint.contains("yapıştırın"),
-               "clipboard shortcut hint exposes row click paste in Turkish")
-        expect(FeatureStrings.clipboard(.tr).shortcutHint.contains("birden çok öğe seçer"),
-               "clipboard shortcut hint exposes command click multi-select in Turkish")
-        expect(FeatureStrings.clipboard(.tr).clickRowShortcut == "Satıra tıkla",
-               "clipboard visual shortcut exposes row click in Turkish")
         let featureTitles: [(AppLanguage, String, String, String, String)] = [
             (.enUS, "Clipboard", "Window layout", "Utilities", "Alerts"),
-            (.ptBR, "Clipboard", "Layout de janelas", "Utilitários", "Alertas"),
-            (.tr, "Pano", "Pencere yerleşimi", "Araçlar", "Uyarılar"),
-            (.es, "Portapapeles", "Diseño de ventanas", "Utilidades", "Alertas"),
-            (.de, "Zwischenablage", "Fensterlayout", "Dienstprogramme", "Warnungen"),
-            (.fr, "Presse-papiers", "Disposition des fenêtres", "Utilitaires", "Alertes"),
-            (.it, "Appunti", "Layout finestre", "Utilità", "Avvisi"),
-            (.ja, "クリップボード", "ウインドウ配置", "ユーティリティ", "アラート"),
-            (.ko, "클립보드", "윈도우 정렬", "유틸리티", "알림"),
-            (.ru, "Буфер обмена", "Раскладка окон", "Утилиты", "Оповещения"),
-            (.zhHans, "剪贴板", "窗口布局", "实用工具", "提醒"),
-            (.zhTW, "剪貼簿", "視窗排列", "工具程式", "提醒"),
-            (.zhHK, "剪貼簿", "視窗排列", "工具", "提示"),
         ]
         for (language, clipboardTitle, windowTitle, utilitiesTitle, alertsTitle) in featureTitles {
             expect(FeatureStrings.clipboard(language).title == clipboardTitle,
@@ -347,8 +323,6 @@ struct MetricsTests {
         }
         expect(FeatureStrings.monitorAlerts(.enUS).cooldown == "Repeat the same alert after",
                "English monitor repeat control is explicit")
-        expect(FeatureStrings.monitorAlerts(.ptBR).cooldown == "Repetir o mesmo alerta depois de",
-               "Portuguese monitor repeat control is explicit")
         expect(ClipboardHistorySelection.initialIndex(totalCount: 3) == 0,
                "clipboard quick window starts keyboard navigation on the first item")
         expect(ClipboardHistorySelection.initialIndex(totalCount: 0) == 0,
@@ -584,7 +558,7 @@ struct MetricsTests {
                     "org.nspasteboard.ConcealedType",
                     "the secret mark keeps the exact name the apps that write it use")
 
-        let pasteboardAccess = GeneralPasteboardAccess(label: "Vorssaint.Tests.PasteboardAccess")
+        let pasteboardAccess = GeneralPasteboardAccess(label: "MacPowerTools.Tests.PasteboardAccess")
         let pasteboardGroup = DispatchGroup()
         let pasteboardStateLock = NSLock()
         var activePasteboardOperations = 0
@@ -2560,22 +2534,10 @@ struct MetricsTests {
                && !SupportUpdateIntroInfo.shouldShow(appVersion: "3.3.1", lastSeenVersion: nil)
                && !SupportUpdateIntroInfo.shouldShow(appVersion: "3.3.3", lastSeenVersion: nil),
                "support prompt never leaks into another release")
-        expect(SupportUpdateIntroStep.discord.next == .social
-               && SupportUpdateIntroStep.social.next == .support
-               && SupportUpdateIntroStep.support.next == nil,
-               "update intro moves from Discord to social updates and support")
-        expect(SupportUpdateIntroStep.discord.previous == nil
-               && SupportUpdateIntroStep.social.previous == .discord
-               && SupportUpdateIntroStep.support.previous == .social,
-               "update intro navigates back without closing")
-        expect(SupportUpdateIntroStep.allCases == [.discord, .social, .support],
-               "update intro page indicators follow the navigation order")
-        expect(AppInfo.discordURL.absoluteString == "https://discord.gg/M6BwWH4BJp",
-               "the community action uses the permanent Discord invitation")
-        expect(AppInfo.coffeeURL.absoluteString == "https://buymeacoffee.com/vorssaint",
-               "financial support uses Buy Me a Coffee")
-        expect(AppInfo.socialURL.absoluteString == "https://x.com/vorssaint",
-               "social previews keep the official X profile")
+        expect(SupportUpdateIntroStep.allCases == [.support],
+               "update intro is a single support step now that Discord/social steps are gone")
+        expect(AppInfo.repositoryURL.absoluteString == "https://github.com/ani-chauhan/mac-power-tools",
+               "the GitHub star action points at this fork's repository")
         // AppInfo.version falls back to "dev" in this bare harness, so read
         // the plist the shipped app will actually carry. The pin is a
         // per-release decision: this check fails on every version bump so the
@@ -3664,7 +3626,7 @@ struct MetricsTests {
         expect(CleanerSupport.isProtectedBundleID("com.apple.Music")
                && CleanerSupport.isProtectedBundleID("com.apple")
                && CleanerSupport.isProtectedBundleID("group.com.apple.notes")
-               && CleanerSupport.isProtectedBundleID("com.vorssaint.utils"),
+               && CleanerSupport.isProtectedBundleID("com.macpowertools.app"),
                "system domains and this app can never be junk owners")
         expect(!CleanerSupport.isProtectedBundleID("com.vendor.editor"),
                "third party identifiers are eligible for the leftover check")
@@ -3675,7 +3637,7 @@ struct MetricsTests {
                && UninstallerSupport.verifiedBundleID("") == nil
                && UninstallerSupport.verifiedBundleID("plain-name") == nil
                && UninstallerSupport.verifiedBundleID("com.vendor../escape") == nil
-               && UninstallerSupport.verifiedBundleID("com.vorssaint.utils") == nil
+               && UninstallerSupport.verifiedBundleID("com.macpowertools.app") == nil
                && UninstallerSupport.verifiedBundleID("com.apple.system") == nil,
                "malformed, protected and current app identifiers never enter uninstall paths")
         let uninstallAppURL = URL(fileURLWithPath: "/Applications/Editor.app")
@@ -5022,9 +4984,7 @@ struct MetricsTests {
                "A size targeted GIF starts from the source width, capped at the tool maximum")
 
         let sizeTargetStrings: [(String, Strings)] = [
-            ("en-US", .enUS), ("pt-BR", .ptBR), ("tr", .tr), ("ru", .ru), ("es", .es),
-            ("de", .de), ("fr", .fr), ("it", .it), ("ja", .ja), ("ko", .ko),
-            ("zh-Hans", .zhHans), ("zh-HK", .zhHK), ("zh-TW", .zhTW),
+            ("en-US", .enUS),
         ]
         for (name, strings) in sizeTargetStrings {
             expect(!strings.mediaSizingResolution.isEmpty
@@ -7126,13 +7086,13 @@ struct MetricsTests {
         expect(UpdateInstallerSupport.installFailureCode(fromMarker: "") == nil,
                "an empty marker is not a failure")
         expect(UpdateInstallerSupport.runsFromImmutableLocation(
-                   appPath: "/private/var/folders/ab/xyz/T/AppTranslocation/1F2/d/Vorssaint.app",
+                   appPath: "/private/var/folders/ab/xyz/T/AppTranslocation/1F2/d/Mac Power Tools.app",
                    volumeIsReadOnly: { _ in false }),
                "translocated apps are flagged as not updatable in place")
-        expect(UpdateInstallerSupport.runsFromImmutableLocation(appPath: "/Volumes/Vorssaint/Vorssaint.app",
+        expect(UpdateInstallerSupport.runsFromImmutableLocation(appPath: "/Volumes/Mac Power Tools/Mac Power Tools.app",
                                                                 volumeIsReadOnly: { _ in true }),
                "apps on a read-only volume (the DMG) are flagged as not updatable in place")
-        expect(!UpdateInstallerSupport.runsFromImmutableLocation(appPath: "/Volumes/ExternalSSD/Vorssaint.app",
+        expect(!UpdateInstallerSupport.runsFromImmutableLocation(appPath: "/Volumes/ExternalSSD/Mac Power Tools.app",
                                                                  volumeIsReadOnly: { _ in false }),
                "apps on a writable external volume stay updatable in place")
         let installerScript = UpdateInstallerSupport.installerScript()
@@ -7165,15 +7125,15 @@ struct MetricsTests {
                 && !installerScript.contains("note() { /bin/echo \"$1\" > \"$RESULT.progress\""),
                "elevated marker writes drop to the original user's credentials")
         let elevated = UpdateInstallerSupport.elevatedInstallCommand(
-            appPath: "/Applications/Vorssaint.app",
-            dmgPath: "/tmp/Vorssaint-update.dmg",
+            appPath: "/Applications/Mac Power Tools.app",
+            dmgPath: "/tmp/MacPowerTools-update.dmg",
             pid: 123,
             resultPath: "/tmp/result",
             uid: 501,
             expectedVersion: "3.3.3")
         expect(elevated.contains("nohup") && elevated.hasSuffix("&"),
                "elevated installer detaches so the app can quit")
-        expect(elevated.contains("'/Applications/Vorssaint.app'"),
+        expect(elevated.contains("'/Applications/Mac Power Tools.app'"),
                "elevated installer passes the app path quoted for the shell")
         expect(elevated.contains("'3.3.3'"),
                "elevated installer passes the expected version quoted for the shell")
@@ -7213,8 +7173,8 @@ struct MetricsTests {
                "beta is not newer than the released final version")
 
         // Release candidate selection
-        let dummyDMG = URL(string: "https://github.com/vorssaintapp/vorssaint-utils/releases/download/v3.3.4/Vorssaint.dmg")!
-        let dummyBetaDMG = URL(string: "https://github.com/vorssaintapp/vorssaint-utils/releases/download/v3.3.4-beta.1/Vorssaint.dmg")!
+        let dummyDMG = URL(string: "https://github.com/ani-chauhan/mac-power-tools/releases/download/v3.3.4/MacPowerTools.dmg")!
+        let dummyBetaDMG = URL(string: "https://github.com/ani-chauhan/mac-power-tools/releases/download/v3.3.4-beta.1/MacPowerTools.dmg")!
 
         let candidateList = [
             UpdateServiceSupport.ReleaseCandidate(tagName: "v3.3.4-beta.1", isPrerelease: true, isDraft: false, dmgURL: dummyBetaDMG, dmgExpectedBytes: 1000, body: "Beta notes"),
@@ -8026,8 +7986,8 @@ struct MetricsTests {
                "a click after hiding lets the Dock bring the app back")
         expect(DockClickSupport.repeatDecision(lastAction: .hide, elapsed: 0.1) == .swallow,
                "an accidental double-click never hides and immediately reopens the app")
-        expect(DockClickSupport.isOwnBundleIdentifier("com.vorssaint.utils")
-                && DockClickSupport.isOwnBundleIdentifier("com.vorssaint.utils.dev")
+        expect(DockClickSupport.isOwnBundleIdentifier("com.macpowertools.app")
+                && DockClickSupport.isOwnBundleIdentifier("com.macpowertools.app.dev")
                 && !DockClickSupport.isOwnBundleIdentifier("com.example.editor")
                 && !DockClickSupport.isOwnBundleIdentifier(nil),
                "Dock clicks never target either build of this app")
@@ -9138,7 +9098,7 @@ struct MetricsTests {
                "App Switcher does not swallow middle-mouse-up outside panel")
         let searchRecords = [
             SwitcherSearchRecord(id: "alpha", title: "Inbox", appName: "Alpha"),
-            SwitcherSearchRecord(id: "beta", title: "Vorssaint Roadmap", appName: "Beta"),
+            SwitcherSearchRecord(id: "beta", title: "Mac Power Tools Roadmap", appName: "Beta"),
             SwitcherSearchRecord(id: "gamma", title: "Café notes", appName: "Gamma"),
         ]
         expect(SwitcherSupport.filteredSearchIDs(records: searchRecords, query: "") == ["alpha", "beta", "gamma"],
@@ -9302,7 +9262,7 @@ struct MetricsTests {
         ### Fixed
         - Update preview stays focused on changes.
 
-        Signed with an Apple Developer ID and notarized by Apple, so it downloads and opens normally. Requires macOS 14 or later. Open the .dmg below and drag Vorssaint to Applications.
+        Signed with an Apple Developer ID and notarized by Apple, so it downloads and opens normally. Requires macOS 14 or later. Open the .dmg below and drag Mac Power Tools to Applications.
         """
         let inAppUpdateBody = ReleaseNotes.inAppUpdateNotes(from: githubReleaseBodyWithFooter) ?? ""
         expect(!inAppUpdateBody.contains("Signed with an Apple Developer ID"),
@@ -9786,18 +9746,6 @@ struct MetricsTests {
 
         let localizedStrings: [(AppLanguage, Strings)] = [
             (.enUS, .enUS),
-            (.ptBR, .ptBR),
-            (.tr, .tr),
-            (.ru, .ru),
-            (.es, .es),
-            (.de, .de),
-            (.fr, .fr),
-            (.it, .it),
-            (.ja, .ja),
-            (.ko, .ko),
-            (.zhHans, .zhHans),
-            (.zhTW, .zhTW),
-            (.zhHK, .zhHK)
         ]
         expect(localizedStrings.count == AppLanguage.allCases.count, "all app languages are covered by tests")
         for (language, strings) in localizedStrings {
@@ -9987,10 +9935,6 @@ struct MetricsTests {
                 expect(strings.discordIntroMessage.contains("new")
                        && strings.discordIntroMessage.contains("still being built"),
                        "English Discord introduction says the community is new and in development")
-            } else if language == .ptBR {
-                expect(strings.discordIntroMessage.contains("nova")
-                       && strings.discordIntroMessage.contains("em desenvolvimento"),
-                       "Portuguese Discord introduction says the community is new and in development")
             }
             expect(!strings.updateShowcaseTitle.isEmpty, "\(prefix) update showcase title is present")
             expect(!strings.updateShowcaseMessage.isEmpty, "\(prefix) update showcase message is present")
@@ -10037,10 +9981,9 @@ struct MetricsTests {
         }
         let infoPlist = NSDictionary(contentsOfFile: "Resources/Info.plist") as? [String: Any]
         let bundleLocalizations = infoPlist?["CFBundleLocalizations"] as? [String] ?? []
-        expect(bundleLocalizations.contains("tr"), "Info.plist declares Turkish as a bundle localization")
-        expect(bundleLocalizations.contains("ko"), "Info.plist declares Korean as a bundle localization")
+        expect(bundleLocalizations == ["en"], "Info.plist declares English as the only bundle localization")
         let baseAudioPrompt = infoPlist?["NSAudioCaptureUsageDescription"] as? String ?? ""
-        expect(baseAudioPrompt.contains("Vorssaint taps individual app audio"),
+        expect(baseAudioPrompt.contains("Mac Power Tools taps individual app audio"),
                "base audio permission prompt is an English fallback")
         let organizerFolderPromptKeys = [
             "NSDesktopFolderUsageDescription", "NSDocumentsFolderUsageDescription",
@@ -10052,21 +9995,7 @@ struct MetricsTests {
                "the organizer declares every supported custom destination permission")
         let localizedInfoPlists = (try? FileManager.default.contentsOfDirectory(
             atPath: "Resources"))?.filter { $0.hasSuffix(".lproj") } ?? []
-        expect(localizedInfoPlists.allSatisfy { folder in
-            let value = (try? String(contentsOfFile: "Resources/\(folder)/InfoPlist.strings",
-                                     encoding: .utf8)) ?? ""
-            return organizerFolderPromptKeys.allSatisfy(value.contains)
-        }, "every localization explains custom organizer folder access")
-        let turkishInfoPlistStrings = (try? String(contentsOfFile: "Resources/tr.lproj/InfoPlist.strings",
-                                                   encoding: .utf8)) ?? ""
-        expect(turkishInfoPlistStrings.contains("NSAudioCaptureUsageDescription")
-               && turkishInfoPlistStrings.contains("Hiçbir şey kaydedilmez"),
-               "Turkish InfoPlist.strings localizes the audio permission prompt")
-        let koreanInfoPlistStrings = (try? String(contentsOfFile: "Resources/ko.lproj/InfoPlist.strings",
-                                                  encoding: .utf8)) ?? ""
-        expect(koreanInfoPlistStrings.contains("NSAudioCaptureUsageDescription")
-               && koreanInfoPlistStrings.contains("어떤 오디오도 녹음되거나"),
-               "Korean InfoPlist.strings localizes the audio permission prompt")
+        expect(localizedInfoPlists.isEmpty, "the app ships English only, with no .lproj folders")
 
         // MARK: Network speed math
 
@@ -10959,9 +10888,7 @@ struct MetricsTests {
             expectFormat(strings.targetRPMFormat, ["d"],
                          "target fan speed format stays valid for \(language.rawValue)")
         }
-        expect(FanControlFeatureStrings.ru.rpmFormat == "%d об/мин"
-                && FanControlFeatureStrings.de.rpmFormat == "%d U/min"
-                && FanControlFeatureStrings.fr.rpmFormat == "%d tr/min",
+        expect(FanControlFeatureStrings.enUS.rpmFormat == "%d RPM",
                "existing localized RPM units stay intact")
 
         let legacyFanSnapshot = Data(#"{"fans":[],"isCooling":false}"#.utf8)
@@ -11254,9 +11181,8 @@ struct MetricsTests {
             expect(values.allSatisfy { !$0.contains("—") },
                    "no em-dash in visible mouse button strings (\(language.rawValue))")
         }
-        expect(FeatureStrings.hub(.ptBR).pageTitle == "Recursos"
-                && FeatureStrings.hub(.enUS).pageTitle == "Features",
-               "hub page title reads naturally in the owner languages")
+        expect(FeatureStrings.hub(.enUS).pageTitle == "Features",
+               "hub page title reads naturally in the owner language")
         for language in AppLanguage.allCases {
             let snippetValues = Mirror(reflecting: FeatureStrings.snippets(language)).children
                 .compactMap { $0.value as? String }
@@ -11361,8 +11287,12 @@ struct MetricsTests {
                "WindowServer is protected")
         expect(KillProcessSupport.isProtected(pid: 9999, name: "loginwindow", path: "/System/Library/CoreServices/loginwindow.app/Contents/MacOS/loginwindow"),
                "loginwindow is protected")
-        expect(KillProcessSupport.isProtected(pid: ProcessInfo.processInfo.processIdentifier, name: "Vorssaint"),
+        expect(KillProcessSupport.isProtected(pid: ProcessInfo.processInfo.processIdentifier, name: "MacPowerTools"),
                "current app PID is protected")
+        expect(KillProcessSupport.isProtected(pid: 12346, name: "MacPowerTools"),
+               "another process reporting our own executable name is protected")
+        expect(KillProcessSupport.isProtected(pid: 12347, name: "MacPowerToolsDeveloper"),
+               "the developer build's executable name is protected")
         expect(!KillProcessSupport.isProtected(pid: 12345, name: "Safari", path: "/Applications/Safari.app/Contents/MacOS/Safari"),
                "ordinary user app is not protected")
 
@@ -11411,14 +11341,6 @@ struct MetricsTests {
                    "every recent capture string is set for \(language.rawValue)")
             expect(recentCaptureValues.allSatisfy { !$0.contains("—") },
                    "no em-dash in recent capture strings (\(language.rawValue))")
-            let feedbackValues = Mirror(reflecting: FeatureStrings.feedback(language)).children
-                .compactMap { $0.value as? String }
-            expect(feedbackValues.count == 28 && feedbackValues.allSatisfy { !$0.isEmpty },
-                   "every feedback string is set for \(language.rawValue)")
-            expect(feedbackValues.allSatisfy { !$0.contains("—") },
-                   "no em-dash in visible feedback strings (\(language.rawValue))")
-            expect(FeatureStrings.feedback(language).charactersFormat.contains("%d"),
-                   "feedback character format keeps its placeholder (\(language.rawValue))")
             let cameraPreviewValues = Mirror(reflecting: FeatureStrings.cameraPreview(language)).children
                 .compactMap { $0.value as? String }
             expect(!cameraPreviewValues.isEmpty && cameraPreviewValues.allSatisfy { !$0.isEmpty },
@@ -11486,18 +11408,6 @@ struct MetricsTests {
             let strings: Strings = {
                 switch language {
                 case .enUS: return .enUS
-                case .ptBR: return .ptBR
-                case .tr: return .tr
-                case .ru: return .ru
-                case .es: return .es
-                case .de: return .de
-                case .fr: return .fr
-                case .it: return .it
-                case .ja: return .ja
-                case .ko: return .ko
-                case .zhHans: return .zhHans
-                case .zhTW: return .zhTW
-                case .zhHK: return .zhHK
                 }
             }()
             expect(!strings.obPurposeTitle.isEmpty && !strings.obPurposeBody.isEmpty
@@ -14122,7 +14032,7 @@ struct MetricsTests {
             developerOverride: "https://test.example/")
         expect(testShareEndpoint.absoluteString == "https://test.example"
                 && ScreenshotSharingSupport.endpoint(
-                    bundleIdentifier: "com.vorssaint.utils",
+                    bundleIdentifier: "com.macpowertools.app",
                     developerOverride: "https://test.example").absoluteString
                     == ScreenshotSharingSupport.productionEndpoint.absoluteString
                 && ScreenshotSharingSupport.endpoint(
@@ -14517,7 +14427,7 @@ struct MetricsTests {
 
         // Muting every microphone, not just the one the Mac is set to: an app
         // pointed at a device of its own has to go silent too.
-        expect(MicMuteSupport.isOwnDevice(name: "Vorssaint Mixer")
+        expect(MicMuteSupport.isOwnDevice(name: "Mac Power Tools Mixer")
                 && !MicMuteSupport.isOwnDevice(name: "MacBook Air Microphone"),
                "the mute skips the app's own mixing device and no other")
         expect(!MicMuteSupport.shouldSaveVolume(nil)
@@ -17795,10 +17705,10 @@ struct MetricsTests {
         expect(CommandBarLinks.expand("https://x.com/{clipboard}", kind: .link,
                                       clipboard: "a+b") == "https://x.com/a%2Bb",
                "a plus sign inside a search is escaped, not read as a space")
-        expect(CommandBarLinks.trailingArgument(query: "gh vorssaint utils", name: "gh")
-                == "vorssaint utils",
+        expect(CommandBarLinks.trailingArgument(query: "gh mac power tools", name: "gh")
+                == "mac power tools",
                "what comes after the name is what the saved search opens with")
-        expect(CommandBarLinks.trailingArgument(query: "GH Vorssaint", name: "gh") == "Vorssaint",
+        expect(CommandBarLinks.trailingArgument(query: "GH MacPowerTools", name: "gh") == "MacPowerTools",
                "the name is matched without case; the argument keeps its own")
         expect(CommandBarLinks.trailingArgument(query: "ghost writer", name: "gh") == nil
                 && CommandBarLinks.trailingArgument(query: "gh", name: "gh") == nil,

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 Vorssaint
+// Copyright (C) 2026 Mac Power Tools
 
 import AppKit
 import IOKit
@@ -37,7 +37,7 @@ final class BluetoothSleepService {
         // off and never saw the wake, because the Mac was shut down (or the
         // app quit) while it slept. The debt is paid before anything else,
         // and paid even when the feature has since been switched off, so
-        // nothing Vorssaint took away is ever kept.
+        // nothing Mac Power Tools took away is ever kept.
         restoreIfOwed()
         if AppFeature.bluetoothSleep.isAvailable,
            UserDefaults.standard.bool(forKey: DefaultsKey.bluetoothSleepEnabled) {
